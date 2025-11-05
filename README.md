@@ -113,7 +113,7 @@ Switch 1(config-vlan)# name Syslog
 Switch 1(config-vlan)# exit
 ```
 
-### Assign Ports to VLAN 10,20,30,40, and 50 
+### Assign Access Ports to VLAN 10,20,30,40, and 50 
 
 ```bash
 Switch 1# configure terminal
@@ -139,8 +139,74 @@ Switch 1(config-if)# switchport access vlan 50
 Switch 1(config-if)# exit
 ```
 
+### Configure Trunk on the Router
+We need to trunk the VLANs to the router so it can receive and route traffic for all VLANs using a single physical link.
 
+![VLANs-to-Router-trunk](Assets/switchport-trunk-1.png)
+```bash
+Switch 1# configure terminal
+Switch 1(config)# int g0/1
+Switch 1(config-if)# switchport mode trunk
+Switch 1(config-if)# switchport trunk allowed vlan 10,20,30,40 and 50
+Switch 1(config-if)# exit
+```
 
+## STEP 5: Configure Router Subinterfaces for Inter-VLAN Routing
+![Suninterfaces-Creation](Assets/intervlan-creation.png)
+Identify the interface connected to the router (Gig0/1)
+
+```bash
+Router> enable
+Router# configure terminal
+Router(config)# int gig0/1
+Router(config-if)# no shutdown
+Router(config-if)# exit
+```
+
+### Create Subinterface according to the VLAN IDs (10, 20, 30, 40 and 50)
+- Router CLI
+### VLAN 10 Subinterface
+
+```bash
+Router(config)# int gig0/1.10
+Router(config-subif)# encapsulation dot1Q 10
+Router(config-subif)# ip address 192.168.10.1 255.255.255.0
+```
+
+### VLAN 20 Subinterface
+
+```bash
+Router(config)# int gig0/1.20
+Router(config-subif)# encapsulation dot1Q 20
+Router(config-subif)# ip address 192.168.20.1 255.255.255.0
+```
+
+### VLAN 30 Subinterface
+
+```bash
+Router(config)# int gig0/1.30
+Router(config-subif)# encapsulation dot1Q 30
+Router(config-subif)# ip address 192.168.30.1 255.255.255.0
+```
+
+### VLAN 40 Subinterface
+
+```bash
+Router(config)# int gig0/1.40
+Router(config-subif)# encapsulation dot1Q 40
+Router(config-subif)# ip address 192.168.40.1 255.255.255.0
+```
+
+### VLAN 50 Subinterface
+
+```bash
+Router(config)# int gig0/1.50
+Router(config-subif)# encapsulation dot1Q 50
+Router(config-subif)# ip address 192.168.50.1 255.255.255.0
+```
+
+## STEP 6: Create DHCP Pools on the Router CLI
+This will automatically assign ip addresses to the devices on the network
 
 
 
