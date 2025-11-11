@@ -208,10 +208,164 @@ Router(config-subif)# ip address 192.168.50.1 255.255.255.0
 ## STEP 6: Create DHCP Pools on the Router CLI
 This will automatically assign ip addresses to the devices on the network
 
+![DHCP-Pools-Creation](Assets/dhcp-pool.png)
+### Internal VLAN 10 Pool
+
+```bash
+Router(config)# service dhcp
+Router(config)# ip dhcp pool Internal
+Router(dhcp-config)# network 192.168.10.0 255.255.255.0
+Router(dhcp-config)# default-router 192.168.10.1
+Router(dhcp-config)# dns-server 8.8.8.8
+Router(dhcp-config)# domain-name michaelangelotech.com
+Router(dhcp-config)# exit
+```
+
+### Guest VLAN 20 Pool
+
+```bash
+Router(config)# service dhcp
+Router(config)# ip dhcp pool Guest
+Router(dhcp-config)# network 192.168.20.0 255.255.255.0
+Router(dhcp-config)# default-router 192.168.20.1
+Router(dhcp-config)# dns-server 8.8.8.8
+Router(dhcp-config)# domain-name michaelangelotech.com
+Router(dhcp-config)# exit
+```
+
+## STEP 7: Enable DHCP on End devices (Laptops) 
+![Enable-DHCP-End-devices](Assets/verify-dhcp-on-laptop.png)
+![Enable-DHCP-End-devices](Assets/verify-dhcp-on-laptop-2.png)
+- Click Laptop > Desktop > IP Configuration
+- Set to **DHCP** on all devices in the set-up
 
 
+## STEP 8: Test Inter-VLAN Routing by Pinging devices to Router
+![Ping-test](Assets/verify-intervlan.png)
+![Ping-test](Assets/verify-intervlan-2.png)
+
+Click on the laptop device > Choose Desktop > Command Line
+
+```bash
+ping 192.168.10.1
+ping 192.168.30.1
+```
+from DMZ to Router
+from Internal to Router
 
 
+## STEP 9: Connect Access Point to Switch 2
+![Connect-Access-Point](Assets/access-point.png)
+
+Click "Wireles Devices" under Networking devices > click and drop:
+
+**Connect:** 
+Access Point 1 to Switch 1 using a Copper Straight Through cable 
+   - AP 1 F0/1 to Switch 1 F0/6
 
 
+## STEP 10: Set up SSID and Password on the Access Point
+![Connect-Access-Point](Assets/wifi-setup-3.png)
 
+Click "Access Point"
+On Port 1: set up your SSDI by clicking the panel box. 
+
+To set a password click the **WPA-2-PSK** from the Authentication section and enter or put your password on the **PSK Pass Phrase box**
+
+## STEP 11: Connect Wifi to wireless devices
+![Set-up-Wifi](Assets/wifi-setup.png)
+![Set-up-Wifi](Assets/wifi-setup-2.png)
+
+Go to laptop > click **PC Wireless** > look for the Wifi SSID > Connect > enter the wifi password using the **PSK Pass Phrase box**
+
+---
+
+## STEP 12: Access Control  Lists  (ACLs ) Configuration on Router
+![ACLS-Creation](Assets/acl-rule-creation.png)
+![ACLS-Creation](Assets/acl-rule-creation-2.png)
+Goal: 
+- Blocks Guest (VLAN 20) from all other VLANS
+- Allows Internal (VLAN10) to access DMZ (VLAN 40) & Syslog (VLAN 50) servers (only the Web/Web admin to Server)
+- Block Internal (VLAN10) to access Admin (VLAN 40)
+  
+We will be configuring an extended ACLs.
+
+On Router CLI
+
+**Block Guest (VLAN 20) from all other VLANS**
+```bash
+Router> enable
+Router# configure terminal
+Router(config)# ip access-list extended GUEST-ISOLATION
+Router(config-ext-nacl)# deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255
+Router(config-ext-nacl)# deny ip 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255
+Router(config-ext-nacl)# deny ip 192.168.20.0 0.0.0.255 192.168.50.0 0.0.0.255
+Router(config-ext-nacl)# deny ip 192.168.20.0 0.0.0.255 192.168.10.0 0.0.0.255
+Router(config-ext-nacl)# permit ip 192.168.20.0 0.0.0.255 any
+Router(config-ext-nacl)# exit
+```
+
+** Allows Internal (VLAN10) to access DMZ (VLAN 30) & Syslog (VLAN 50) servers (only the Web/Web admin to Server)**
+
+** Block Internal (VLAN10) to access Admin (VLAN 40)**
+```bash
+Router> enable
+Router# configure terminal
+Router(config)# ip access-list extended VLAN10_To_Others
+Router(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.2 eq www
+Router(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.2 eq 443
+Router(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 192.168.50.2 eq www
+Router(config-ext-nacl)# permit tcp 192.168.10.0 0.0.0.255 host 192.168.50.2 eq 443
+Router(config-ext-nacl)# deny ip 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255
+Router(config-ext-nacl)# permit ip any any
+```
+
+### Apply ACL to the Guest VLAN 20 Subinterface 
+Identify subinterface on the router
+
+```bash
+Router(config)# interface gig0/1.20
+Router(config-subif)# ip access-group GUEST_ISOLATION in
+Router(config-subif)# exit
+```
+
+### Apply ACL to the Internal VLAN 10 Subinterface 
+Identify subinterface on the router
+
+```bash
+Router(config)# interface gig0/1.10
+Router(config-subif)# ip access-group VLAN10_To_Others in
+Router(config-subif)# exit
+```
+
+## STEP 13: Test ACL Rules
+**Guest network without ACL Rules**
+
+![ICMP-Ping-Test](Assets/guest-network-no-acl.png)
+
+Result: Getting replies 
+
+---
+**Guest network with ACL Rules**
+
+![ICMP-Ping-Test](Assets/guest-network-with-acl.png)
+
+Result: Request Timeout
+
+Interpretation: ACL rule successfully blocks Guest vlan to all vlans
+
+---
+**Internal VLAN 10 with ACL Rules to admin (VLAN 40)**
+
+![ICMP-Ping-Test](Assets/internal-network-block-admin.png)
+
+Result: Request Timeout
+
+Interpretation: ACL rule successfully block Internal (VLAN 10) to admin (VlAN 40)
+
+
+- Run `ping 192.168.30.2` (vlan 30 DMZ ip) from Internal (vlan 10) PC
+should work (ICMP is allowed) from the DMZ server in the command line
+
+
+![ICMP-Ping-Test](Assets/VLAN10-ACL.png)
